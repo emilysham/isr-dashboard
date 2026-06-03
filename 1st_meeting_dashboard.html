@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ISR – 1st Meeting Not This Month</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f4f8;
+      color: #1e293b;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+      color: white;
+      padding: 24px 32px;
+    }
+    .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+    .header p  { font-size: 13px; opacity: 0.75; margin-top: 4px; }
+
+    /* ── Stats row ── */
+    .stats {
+      display: flex;
+      gap: 16px;
+      padding: 20px 32px;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px 22px;
+      min-width: 160px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      border-top: 4px solid #94a3b8;
+    }
+    .stat-card.red   { border-top-color: #ef4444; }
+    .stat-card.green { border-top-color: #22c55e; }
+    .stat-card.blue  { border-top-color: #3b82f6; }
+    .stat-card .val  { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-card .lbl  { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+    /* ── Filters ── */
+    .filters {
+      display: flex;
+      gap: 10px;
+      padding: 0 32px 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filters select, .filters input {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 13px;
+      background: white;
+      color: #1e293b;
+      outline: none;
+    }
+    .filters select:focus, .filters input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+    }
+    .filter-btn {
+      padding: 7px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all .15s;
+    }
+    .filter-btn.active   { background: #ef4444; color: white; }
+    .filter-btn.inactive { background: white; color: #ef4444; border: 1px solid #ef4444; }
+    .filter-btn:hover    { opacity: .85; }
+
+    /* ── Alert banner ── */
+    .alert-section {
+      margin: 0 32px 16px;
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-left: 5px solid #ef4444;
+      border-radius: 10px;
+      padding: 14px 18px;
+    }
+    .alert-section h3 { font-size: 13px; font-weight: 700; color: #b91c1c; margin-bottom: 6px; }
+    .alert-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .alert-pill {
+      background: #fee2e2;
+      color: #991b1b;
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* ── Table wrapper ── */
+    .table-wrap {
+      margin: 0 32px 32px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      overflow: auto;
+      max-height: calc(100vh - 280px);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: max-content;
+      min-width: 100%;
+      font-size: 12.5px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    thead tr th {
+      background: #1e3a5f;
+      color: white;
+      padding: 10px 12px;
+      text-align: left;
+      white-space: nowrap;
+      font-weight: 600;
+      font-size: 11.5px;
+      letter-spacing: .3px;
+      border-right: 1px solid #2a4a75;
+      cursor: pointer;
+      user-select: none;
+    }
+    thead tr th:hover { background: #2563eb; }
+    thead tr th.sort-asc::after  { content: " ▲"; font-size: 9px; }
+    thead tr th.sort-desc::after { content: " ▼"; font-size: 9px; }
+
+    tbody tr {
+      border-bottom: 1px solid #f1f5f9;
+      transition: background .1s;
+    }
+    tbody tr:hover { background: #f8faff !important; }
+
+    tbody tr.flagged {
+      background: #fff5f5;
+      border-left: 4px solid #ef4444;
+    }
+    tbody tr.flagged td:first-child { padding-left: 10px; }
+
+    tbody tr.ok { background: white; }
+
+    td {
+      padding: 9px 12px;
+      white-space: nowrap;
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-right: 1px solid #f1f5f9;
+      color: #334155;
+    }
+
+    .badge {
+      display: inline-block;
+      border-radius: 20px;
+      padding: 2px 9px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-sql  { background: #dbeafe; color: #1d4ed8; }
+    .badge-cold { background: #f1f5f9; color: #475569; }
+    .badge-flag { background: #fee2e2; color: #b91c1c; }
+    .badge-ok   { background: #dcfce7; color: #15803d; }
+
+    .row-count {
+      padding: 8px 32px;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    /* ── Refresh bar ── */
+    .refresh-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 32px 12px;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 7px;
+      border: 1px solid #cbd5e1;
+      background: white;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      color: #334155;
+    }
+    .refresh-btn:hover { background: #f1f5f9; }
+    .refresh-btn.spinning svg { animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; }
+    .dot.stale { background: #f59e0b; }
+
+    /* ── Password overlay ── */
+    #pwOverlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #pwBox {
+      background: white; border-radius: 16px; padding: 40px 36px;
+      width: 340px; box-shadow: 0 20px 60px rgba(0,0,0,.3); text-align: center;
+    }
+    #pwBox h2 { font-size: 18px; font-weight: 700; color: #1e3a5f; margin-bottom: 6px; }
+    #pwBox p  { font-size: 13px; color: #64748b; margin-bottom: 24px; }
+    #pwInput {
+      width: 100%; padding: 10px 14px; border-radius: 8px;
+      border: 1.5px solid #cbd5e1; font-size: 14px; outline: none;
+      text-align: center; letter-spacing: 2px;
+    }
+    #pwInput:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+    #pwSubmit {
+      margin-top: 14px; width: 100%; padding: 10px;
+      background: linear-gradient(135deg, #1e3a5f, #2563eb);
+      color: white; border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    #pwSubmit:hover { opacity: .9; }
+    #pwError { color: #ef4444; font-size: 12px; margin-top: 10px; display: none; }
+
+    /* ── Inside Sales tag ── */
+    .tag-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 13px;
+      border-radius: 20px;
+      border: 1.5px solid #7c3aed;
+      background: white;
+      color: #7c3aed;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .tag-btn:hover  { background: #f5f3ff; }
+    .tag-btn.active { background: #7c3aed; color: white; }
+    .badge-is { background: #ede9fe; color: #6d28d9; }
+  </style>
+</head>
+<body>
+
+<div id="pwOverlay">
+  <div id="pwBox">
+    <h2>📊 ISR Pipeline Dashboard</h2>
+    <p>Enter password to continue</p>
+    <input id="pwInput" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')checkPw()" autofocus />
+    <button id="pwSubmit" onclick="checkPw()">Unlock</button>
+    <div id="pwError">Incorrect password. Please try again.</div>
+  </div>
+</div>
+
+<div class="header">
+  <h1>⚠ 1st Meeting Not This Month</h1>
+  <p>Opportunities where 1st Meeting Date is <strong>in a past month</strong> (excluding current &amp; future months) &nbsp;·&nbsp; Live from Google Sheets</p>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="refresh-bar">
+  <button class="refresh-btn" id="refreshBtn" onclick="doRefresh()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+    Refresh
+  </button>
+  <span class="dot" id="dot"></span>
+  <span id="refreshStatus">Loading…</span>
+</div>
+
+<div class="filters">
+  <input type="text"   id="search"      placeholder="🔍  Search…" oninput="applyFilters()" style="width:200px" />
+  <select id="fOwner"  onchange="applyFilters()"><option value="">All Owners</option></select>
+  <select id="fStage"  onchange="applyFilters()"><option value="">All Stages</option></select>
+  <select id="fPeriod" onchange="applyFilters()"><option value="">All Fiscal Periods</option></select>
+  <select id="fRole"   onchange="applyFilters()"><option value="">All Owner Roles</option></select>
+  <select id="fIS"    onchange="applyFilters()"><option value="">All IS Tags</option></select>
+  <button class="tag-btn" id="isBtn" onclick="toggleIS()">🏷 Has IS Tag</button>
+</div>
+
+<div class="row-count" id="rowCount"></div>
+
+<div class="table-wrap">
+  <table id="mainTable">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)">Inside Sales</th>
+        <th onclick="sortTable(1)">Opportunity Owner</th>
+        <th onclick="sortTable(2)">Account Name</th>
+        <th onclick="sortTable(3)">Opportunity Name</th>
+        <th onclick="sortTable(4)">Stage</th>
+        <th onclick="sortTable(5)">Fiscal Period</th>
+        <th onclick="sortTable(6)">Amount</th>
+        <th onclick="sortTable(7)">Probability</th>
+        <th onclick="sortTable(8)">Age (days)</th>
+        <th onclick="sortTable(9)">Close Date</th>
+        <th onclick="sortTable(10)" style="background:#7f1d1d">⚠ 1st Meeting Date</th>
+        <th onclick="sortTable(11)">Next Step</th>
+        <th onclick="sortTable(12)">Lead Source</th>
+        <th onclick="sortTable(13)">Opp Type</th>
+        <th onclick="sortTable(14)">Industry</th>
+        <th onclick="sortTable(15)">Category</th>
+        <th onclick="sortTable(16)">Contact Title</th>
+        <th onclick="sortTable(17)">Contact Email</th>
+        <th onclick="sortTable(18)">Contact Name</th>
+        <th onclick="sortTable(19)">Contact Phone</th>
+        <th onclick="sortTable(20)">Last Activity</th>
+        <th onclick="sortTable(21)">Last Modified By</th>
+        <th onclick="sortTable(22)">Total Contract Value</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<script>
+// ── Password gate ─────────────────────────────────────────────────
+function checkPw() {
+  const val = document.getElementById('pwInput').value;
+  if (val === 'Appieremily') {
+    document.getElementById('pwOverlay').style.display = 'none';
+    doRefresh();
+  } else {
+    document.getElementById('pwError').style.display = 'block';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+
+// ── Google Sheets live source ──────────────────────────────────────
+const SHEET_ID  = '1Z7GzXtENnTj7MFbb3nAKv59H2BncwVkWkbJxB18_zEA';
+const CSV_URL   = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
+const REFRESH_S = 60; // auto-refresh interval in seconds
+
+// ── Fallback hardcoded data ────────────────────────────────────────
+const FALLBACK = [
+  { ownerRole:"Mid_Market_JP_Sales", oppOwner:"Shungo Nakayama",   accountName:"DoCLASSE",                  oppName:"AQ - DoCLASSE(www.doclasse.com)202606",                            stage:"Qualified Leads (SQL)", fiscalPeriod:"Q2-2026", amount:"",       prob:"10%", age:1,   closeDate:"6/30/2026",  createdDate:"5/27/2026", nextStep:"", leadSource:"Inside Sales Lead",    oppType:"",      industry:"Clothing & Accessories",            category:"",                    contactTitle:"",                            contactEmail:"mawatanabe@doclasse.com",             contact:"真澄 渡邉",     phone:"03-6703-8009",      lastActivity:"",          modifiedBy:"Atsushi Yoshimura", tcv:0,      firstMeeting:"6/3/2026",  insideSalesTag:"Atsushi Yoshimura" },
+  { ownerRole:"Mid_Market_JP_Sales", oppOwner:"Shungo Nakayama",   accountName:"ソフトバンク",               oppName:"AQ - ソフトバンク(softbank.jp/online-shop)202605",                 stage:"Qualified Leads (SQL)", fiscalPeriod:"Q2-2026", amount:"",       prob:"10%", age:3,   closeDate:"5/31/2026",  createdDate:"5/25/2026", nextStep:"", leadSource:"Inside Sales Lead",    oppType:"",      industry:"Internet & Telecom",                category:"",                    contactTitle:"",                            contactEmail:"hirofumi.okamoto@g.softbank.co.jp",  contact:"寛史 岡本",     phone:"",                  lastActivity:"5/28/2026", modifiedBy:"Atsushi Yoshimura", tcv:0,      firstMeeting:"5/29/2026", insideSalesTag:"Atsushi Yoshimura" },
+  { ownerRole:"Mid_Market_JP_Sales", oppOwner:"Shungo Nakayama",   accountName:"メーカーズシャツ鎌倉",       oppName:"AQ - メーカーズシャツ鎌倉(shop.shirt.co.jp)202606",                stage:"Qualified Leads (SQL)", fiscalPeriod:"Q2-2026", amount:"",       prob:"10%", age:3,   closeDate:"6/30/2026",  createdDate:"5/25/2026", nextStep:"", leadSource:"Inside Sales Lead",    oppType:"",      industry:"Clothing & Accessories",            category:"",                    contactTitle:"デジタルマーケティング室 GM",       contactEmail:"yasumura@shirt.co.jp",               contact:"隆志 安村",     phone:"090-5558-4663",     lastActivity:"",          modifiedBy:"Atsushi Yoshimura", tcv:0,      firstMeeting:"6/3/2026",  insideSalesTag:"Atsushi Yoshimura" },
+  { ownerRole:"Mid_Market_JP_Sales", oppOwner:"Shungo Nakayama",   accountName:"タッチベース",               oppName:"BB - タッチベース(確認中)202605",                                  stage:"Qualified Leads (SQL)", fiscalPeriod:"Q3-2026", amount:"",       prob:"10%", age:10,  closeDate:"7/30/2026",  createdDate:"5/18/2026", nextStep:"", leadSource:"Inside Sales Lead",    oppType:"",      industry:"Agency",                            category:"マーケティング",      contactTitle:"マーケティングストラテジスト",     contactEmail:"mina.matsubara@touch-base.biz",      contact:"美奈 松原",     phone:"",                  lastActivity:"",          modifiedBy:"Shungo Nakayama",   tcv:0,      firstMeeting:"5/22/2026", insideSalesTag:"Atsushi Yoshimura" },
+  { ownerRole:"AS",                  oppOwner:"Kazuhide Ishikawa", accountName:"ナイル",                     oppName:"AIB - ナイル (代理店候補) 202604",                                 stage:"Qualified Leads (SQL)", fiscalPeriod:"Q2-2026", amount:"0",      prob:"10%", age:36,  closeDate:"4/30/2026",  createdDate:"4/22/2026", nextStep:"", leadSource:"Inside Sales Lead",    oppType:"",      industry:"Technology",                        category:"",                    contactTitle:"執行役員",                    contactEmail:"kenta_hr@nyle.co.jp",                contact:"健太 針替",     phone:"9047454013",        lastActivity:"4/27/2026", modifiedBy:"Atsushi Yoshimura", tcv:0,      firstMeeting:"4/27/2026", insideSalesTag:"Atsushi Yoshimura" },
+  { ownerRole:"Mid_Market_JP_Sales", oppOwner:"Shungo Nakayama",   accountName:"アルペン",                   oppName:"AQ - アルペン (Alpen) - New - 2026",                               stage:"Qualified Leads (SQL)", fiscalPeriod:"Q3-2026", amount:"",       prob:"10%", age:42,  closeDate:"9/30/2026",  createdDate:"4/16/2026", nextStep:"", leadSource:"Inside Sales Lead",    oppType:"",      industry:"Clothing & Accessories",            category:"スポーツ用品店",      contactTitle:"グループマネジャー",              contactEmail:"yu-arikawa@ap.alpen-group.jp",       contact:"悠貴 蟻川",     phone:"",                  lastActivity:"",          modifiedBy:"Shungo Nakayama",   tcv:0,      firstMeeting:"5/12/2026", insideSalesTag:"Atsushi Yoshimura" },
+  { ownerRole:"Mid_Market_JP_Sales", oppOwner:"Shungo Nakayama",   accountName:"イオンフィナンシャルサービス", oppName:"AQ - イオンフィナンシャルサービス(aeonfinancial.co.jp)202604",    stage:"Qualified Leads (SQL)", fiscalPeriod:"Q4-2026", amount:"",       prob:"10%", age:48,  closeDate:"11/30/2026", createdDate:"4/10/2026", nextStep:"", leadSource:"Inside Sales Lead",    oppType:"",      industry:"Finance & Insurance",               category:"",                    contactTitle:"統括マネージャー",                contactEmail:"akira_endo@aeon.co.jp",              contact:"亮 遠藤",       phone:"",                  lastActivity:"",          modifiedBy:"emily sham",        tcv:0,      firstMeeting:"4/21/2026", insideSalesTag:"Atsushi Yoshimura" },
+  { ownerRole:"Mid_Market_JP_Sales", oppOwner:"Hiromu Kamiya",     accountName:"バリュエンスジャパン",       oppName:"AQ - バリュエンスジャパン(allu-official.com)202604",              stage:"Qualified Leads (SQL)", fiscalPeriod:"Q2-2026", amount:"",       prob:"10%", age:56,  closeDate:"6/30/2026",  createdDate:"4/2/2026",  nextStep:"", leadSource:"Inside Sales Lead",    oppType:"",      industry:"Clothing & Accessories",            category:"",                    contactTitle:"部長",                        contactEmail:"iyama.yuta@valuence.inc",             contact:"雄太 井山",     phone:"",                  lastActivity:"",          modifiedBy:"Hiromu Kamiya",     tcv:0,      firstMeeting:"4/13/2026", insideSalesTag:"Atsushi Yoshimura" },
+  { ownerRole:"BD - CAG Digital",    oppOwner:"takuya kitayama",   accountName:"ニフティ株式会社",           oppName:"AIB-Nifty(Nifty Onsen):202605",                                    stage:"Cold",                  fiscalPeriod:"Q2-2026", amount:"500000", prob:"0%",  age:72,  closeDate:"4/30/2026",  createdDate:"3/17/2026", nextStep:"", leadSource:"Inside Sales Lead",    oppType:"",      industry:"Travel/Airline/Hospitality",        category:"",                    contactTitle:"",                            contactEmail:"hisao.tezuka@niftylifestyle.co.jp",  contact:"久雄 手塚",     phone:"",                  lastActivity:"4/17/2026", modifiedBy:"takuya kitayama",   tcv:500000, firstMeeting:"3/18/2026", insideSalesTag:"Saki Sekine" },
+  { ownerRole:"BD - CAG Digital",    oppOwner:"hiroshi naka",      accountName:"ZOZO",                       oppName:"AIB_ZOZO_ZOZOTOWN_202606_NEW",                                     stage:"Qualified Leads (SQL)", fiscalPeriod:"Q2-2026", amount:"0",      prob:"10%", age:3,   closeDate:"5/25/2026",  createdDate:"5/25/2026", nextStep:"", leadSource:"",                    oppType:"",      industry:"Finance & Insurance",               category:"",                    contactTitle:"",                            contactEmail:"tetsuo.kubota@zozo.com",             contact:"",              phone:"",                  lastActivity:"",          modifiedBy:"Saki Sekine",       tcv:0,      firstMeeting:"5/27/2026", insideSalesTag:"Saki Sekine" },
+  { ownerRole:"AS",                  oppOwner:"Genki Sato",        accountName:"NEXON",                      oppName:"AIB_NEXON_MapleStory_202606",                                      stage:"Cold",                  fiscalPeriod:"Q2-2026", amount:"0",      prob:"0%",  age:6,   closeDate:"6/30/2026",  createdDate:"5/22/2026", nextStep:"", leadSource:"Inside Sales Lead",    oppType:"",      industry:"Finance & Insurance",               category:"Computer Games",      contactTitle:"モバイルマーケティング室",         contactEmail:"suzuki.yohei@nexon.co.jp",           contact:"",              phone:"03-6629-5350",      lastActivity:"5/21/2026", modifiedBy:"Saki Sekine",       tcv:0,      firstMeeting:"5/22/2026", insideSalesTag:"Saki Sekine" },
+  { ownerRole:"BD - CAG Digital",    oppOwner:"hisae miyoshi",     accountName:"セレス",                     oppName:"AIB _SERES_Moppy_202605",                                          stage:"Cold",                  fiscalPeriod:"Q2-2026", amount:"0",      prob:"0%",  age:7,   closeDate:"6/30/2026",  createdDate:"5/21/2026", nextStep:"", leadSource:"Marketing event",      oppType:"",      industry:"Clothing & Accessories",            category:"",                    contactTitle:"ポイントメディア事業部",          contactEmail:"t-kabei@ceres-inc.jp",               contact:"",              phone:"9085463477",        lastActivity:"5/25/2026", modifiedBy:"Saki Sekine",       tcv:0,      firstMeeting:"5/22/2026", insideSalesTag:"Saki Sekine" },
+  { ownerRole:"BD - CAG Digital",    oppOwner:"hiroshi naka",      accountName:"Gio",                        oppName:"AIB_GIO (GRL )_202605_NEW",                                        stage:"Qualified Leads (SQL)", fiscalPeriod:"Q4-2026", amount:"0",      prob:"10%", age:10,  closeDate:"11/30/2026", createdDate:"5/18/2026", nextStep:"", leadSource:"Seller sourced",       oppType:"",      industry:"Retail - E-commerce Platform",      category:"",                    contactTitle:"",                            contactEmail:"osada@grailnet.jp",                  contact:"",              phone:"",                  lastActivity:"",          modifiedBy:"Saki Sekine",       tcv:0,      firstMeeting:"5/27/2026", insideSalesTag:"Saki Sekine" },
+  { ownerRole:"BD - CAG Digital",    oppOwner:"hisae miyoshi",     accountName:"Match Group",                oppName:"AIBID_Match Group_Tinder_202605_New",                              stage:"Qualified Leads (SQL)", fiscalPeriod:"Q2-2026", amount:"0",      prob:"10%", age:10,  closeDate:"5/11/2026",  createdDate:"5/18/2026", nextStep:"", leadSource:"Inside sales sourced", oppType:"",      industry:"Dating",                            category:"",                    contactTitle:"",                            contactEmail:"contractor.bmatake@match.com",        contact:"",              phone:"",                  lastActivity:"",          modifiedBy:"Saki Sekine",       tcv:0,      firstMeeting:"5/11/2026", insideSalesTag:"Saki Sekine" },
+  { ownerRole:"BD - CAG Digital",    oppOwner:"hiroshi naka",      accountName:"JALカード",                  oppName:"AIB-JAL card (JALマイレージバンク):202604",                        stage:"Qualified Leads (SQL)", fiscalPeriod:"Q4-2026", amount:"0",      prob:"10%", age:59,  closeDate:"10/1/2026",  createdDate:"3/30/2026", nextStep:"", leadSource:"Inside sales sourced", oppType:"",      industry:"Travel/Airline/Hospitality",        category:"",                    contactTitle:"担当部長",                    contactEmail:"sekiguchi.fbye@jal.com",             contact:"",              phone:"",                  lastActivity:"4/13/2026", modifiedBy:"Saki Sekine",       tcv:0,      firstMeeting:"4/3/2026",  insideSalesTag:"Saki Sekine" },
+  { ownerRole:"Mid_Market_JP_Sales", oppOwner:"Shungo Nakayama",   accountName:"ビームス",                   oppName:"AQ - ビームス (BEAMS) - New - 2026",                               stage:"Qualified Leads (SQL)", fiscalPeriod:"Q3-2026", amount:"",       prob:"10%", age:72,  closeDate:"9/30/2026",  createdDate:"3/17/2026", nextStep:"", leadSource:"Inside sales sourced", oppType:"",      industry:"Clothing & Accessories",            category:"カジュアル衣料",     contactTitle:"",                            contactEmail:"yamazaki.yuichi@beams.jp",            contact:"",              phone:"03-3470-6886",      lastActivity:"",          modifiedBy:"Saki Sekine",       tcv:0,      firstMeeting:"3/30/2026", insideSalesTag:"Saki Sekine" },
+  { ownerRole:"AS",                  oppOwner:"Genki Sato",        accountName:"ビームス",                   oppName:"AIB-Beams (Beams):202603",                                         stage:"Qualified Leads (SQL)", fiscalPeriod:"Q3-2026", amount:"0",      prob:"10%", age:79,  closeDate:"9/30/2026",  createdDate:"3/10/2026", nextStep:"", leadSource:"Inside sales sourced", oppType:"",      industry:"Clothing & Accessories",            category:"カジュアル衣料",     contactTitle:"",                            contactEmail:"yamazaki.yuichi@beams.jp",            contact:"",              phone:"03-3470-6886",      lastActivity:"",          modifiedBy:"emily sham",        tcv:0,      firstMeeting:"3/30/2026", insideSalesTag:"Saki Sekine" },
+  { ownerRole:"AS",                  oppOwner:"shuichi miki",      accountName:"ソフトバンク",               oppName:"AIB-Softbank202602",                                               stage:"Qualified Leads (SQL)", fiscalPeriod:"Q1-2026", amount:"0",      prob:"10%", age:122, closeDate:"2/28/2026",  createdDate:"1/26/2026", nextStep:"", leadSource:"Inside sales sourced", oppType:"",      industry:"Internet & Telecom",                category:"",                    contactTitle:"",                            contactEmail:"takehiro.yamada@g.softbank.co.jp",   contact:"Takehiro 山田", phone:"080-4473-4940",     lastActivity:"",          modifiedBy:"emily sham",        tcv:0,      firstMeeting:"2/3/2026",  insideSalesTag:"Saki Sekine" },
+  { ownerRole:"",                    oppOwner:"Velma Lee",         accountName:"智生活",                     oppName:"AR - 智生活 (Smartdaily) - New - 2026",                            stage:"Cold",                  fiscalPeriod:"Q4-2026", amount:"",       prob:"0%",  age:3,   closeDate:"12/31/2026", createdDate:"5/25/2026", nextStep:"", leadSource:"Inside sales sourced", oppType:"",      industry:"Household Goods & Furniture",       category:"",                    contactTitle:"策略長",                      contactEmail:"joseph.liu@smartdaily.com.tw",        contact:"",              phone:"917509240",         lastActivity:"",          modifiedBy:"Velma Lee",         tcv:0,      firstMeeting:"5/25/2026", insideSalesTag:"Velma Lee" },
+  { ownerRole:"Mid_Market_TW_Sales", oppOwner:"Longlong Lee",      accountName:"老協珍",                     oppName:"AQ - 老協珍 (LXZ) - New - 2026",                                   stage:"Cold",                  fiscalPeriod:"Q4-2026", amount:"",       prob:"0%",  age:17,  closeDate:"10/30/2026", createdDate:"5/11/2026", nextStep:"", leadSource:"ESS Sales Lead",       oppType:"",      industry:"Beauty/Cosmetics/Personal Care/Spa", category:"",                   contactTitle:"",                            contactEmail:"francis_kuo@lxz.com.tw",             contact:"Francis Kuo",   phone:"971860715",         lastActivity:"5/7/2026",  modifiedBy:"Longlong Lee",      tcv:0,      firstMeeting:"5/8/2026",  insideSalesTag:"Velma Lee" },
+  { ownerRole:"",                    oppOwner:"Mango Wu",          accountName:"路易莎職人咖啡",             oppName:"路易莎咖啡職人股份有限公司-",                                      stage:"Cold",                  fiscalPeriod:"Q2-2026", amount:"",       prob:"0%",  age:56,  closeDate:"6/30/2026",  createdDate:"4/2/2026",  nextStep:"", leadSource:"BotBonnie_Inbound",   oppType:"",      industry:"Clothing & Accessories",            category:"",                    contactTitle:"",                            contactEmail:"hwang@louisacoffee.com.tw",           contact:"",              phone:"02-29035868#5205",  lastActivity:"3/19/2026", modifiedBy:"emily sham",        tcv:0,      firstMeeting:"3/20/2026", insideSalesTag:"Velma Lee" },
+  { ownerRole:"",                    oppOwner:"emma chen",         accountName:"Watsons TW 屈臣氏",          oppName:"AR - Watsons TW 屈臣氏 - New - 2026",                             stage:"Cold",                  fiscalPeriod:"Q2-2026", amount:"",       prob:"0%",  age:66,  closeDate:"6/30/2026",  createdDate:"3/23/2026", nextStep:"", leadSource:"Inside Sales Lead",    oppType:"",      industry:"Beauty/Cosmetics/Personal Care/Spa", category:"",                   contactTitle:"GM",                          contactEmail:"alicehuang@watsons.com.tw",           contact:"Alice Huang",   phone:"987083076",         lastActivity:"",          modifiedBy:"emily sham",        tcv:0,      firstMeeting:"3/19/2026", insideSalesTag:"Velma Lee" },
+  { ownerRole:"",                    oppOwner:"baggio Chang",      accountName:"民視品牌電商(FTV)",          oppName:"AR - 民視品牌電商(FTV) - New - 2026",                             stage:"Cold",                  fiscalPeriod:"Q2-2026", amount:"",       prob:"0%",  age:66,  closeDate:"6/19/2026",  createdDate:"3/23/2026", nextStep:"", leadSource:"Inside sales sourced", oppType:"",      industry:"Finance & Insurance",               category:"",                    contactTitle:"執行長",                      contactEmail:"shanlan.lin@ftv.com.tw",             contact:"",              phone:"937072866",         lastActivity:"3/20/2026", modifiedBy:"Kristy Liao",       tcv:0,      firstMeeting:"3/19/2026", insideSalesTag:"Velma Lee" },
+  { ownerRole:"",                    oppOwner:"baggio Chang",      accountName:"友邦人壽",                   oppName:"AX - 友邦人壽 (AIA Group) - New - 2026",                          stage:"Cold",                  fiscalPeriod:"Q3-2026", amount:"",       prob:"0%",  age:73,  closeDate:"9/25/2026",  createdDate:"3/16/2026", nextStep:"", leadSource:"Inside Sales Lead",    oppType:"Other", industry:"Finance & Insurance",               category:"",                    contactTitle:"CMO行銷長",                   contactEmail:"sophia-yh.liao@aia.com",             contact:"Sophia Liao",   phone:"921598736",         lastActivity:"",          modifiedBy:"Annie Cheng",       tcv:0,      firstMeeting:"3/19/2026", insideSalesTag:"Velma Lee" },
+  { ownerRole:"ESS_JP",              oppOwner:"Yasuto Oohori",     accountName:"inglewood",                  oppName:"AQ - イングリウッド(aurelie.tokyo/)202606",                        stage:"Cold",                  fiscalPeriod:"Q2-2026", amount:"",       prob:"0%",  age:2,   closeDate:"6/30/2026",  createdDate:"5/26/2026", nextStep:"", leadSource:"",                    oppType:"",      industry:"",                                  category:"CRM",                 contactTitle:"",                            contactEmail:"aaa@aaa.com",                        contact:"耕平 辻",       phone:"",                  lastActivity:"",          modifiedBy:"Yuito Miyoshi",     tcv:0,      firstMeeting:"5/28/2026", insideSalesTag:"Yuito Miyoshi" },
+];
+
+// ── Core helpers ───────────────────────────────────────────────────
+const TODAY = new Date();
+const CUR_M = TODAY.getMonth();
+const CUR_Y = TODAY.getFullYear();
+
+function parseMonthYear(s) {
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d) ? null : { m: d.getMonth(), y: d.getFullYear() };
+}
+function isFlagged(r) {
+  const f = parseMonthYear(r.firstMeeting);
+  if (!f) return true; // no meeting date booked = flag
+  const isCurrentMonth = f.y === CUR_Y && f.m === CUR_M;
+  const isFutureMonth  = f.y > CUR_Y || (f.y === CUR_Y && f.m > CUR_M);
+  return !isCurrentMonth && !isFutureMonth; // past months only
+}
+
+// ── CSV parser ─────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return null;
+  const cols = parseCSVLine(lines[0]);
+  const idx = k => cols.findIndex(c => c.trim().toLowerCase() === k.toLowerCase());
+  const I = {
+    ownerRole:    idx('Owner Role'),
+    oppOwner:     idx('Opportunity Owner'),
+    accountName:  idx('Account Name'),
+    oppName:      idx('Opportunity Name'),
+    stage:        idx('Stage'),
+    fiscalPeriod: idx('Fiscal Period'),
+    amount:       idx('Amount'),
+    prob:         idx('Probability (%)'),
+    age:          idx('Age'),
+    closeDate:    idx('Close Date'),
+    createdDate:  idx('Created Date'),
+    nextStep:     idx('Next Step'),
+    leadSource:   idx('Lead Source'),
+    oppType:      idx('Opportunity Type'),
+    industry:     idx('Industry'),
+    category:     idx('Category'),
+    contactTitle: idx('Contact: Title'),
+    contactEmail: idx('Contact: Email'),
+    contact:      idx('Contact'),
+    phone:        idx('Contact: Phone'),
+    lastActivity:    idx('Last Activity'),
+    modifiedBy:      idx('Last Modified By'),
+    tcv:             idx('Total Contract Value'),
+    firstMeeting:    idx('1st Meeting Date'),
+    insideSalesTag:  idx('Inside Sales Tag'),
+  };
+  return lines.slice(1).map(line => {
+    const v = parseCSVLine(line);
+    const g = i => (i >= 0 && i < v.length) ? v[i].trim() : '';
+    return {
+      ownerRole: g(I.ownerRole), oppOwner: g(I.oppOwner), accountName: g(I.accountName),
+      oppName: g(I.oppName), stage: g(I.stage), fiscalPeriod: g(I.fiscalPeriod),
+      amount: g(I.amount), prob: g(I.prob), age: parseInt(g(I.age))||0,
+      closeDate: g(I.closeDate), createdDate: g(I.createdDate), nextStep: g(I.nextStep),
+      leadSource: g(I.leadSource), oppType: g(I.oppType), industry: g(I.industry),
+      category: g(I.category), contactTitle: g(I.contactTitle), contactEmail: g(I.contactEmail),
+      contact: g(I.contact), phone: g(I.phone), lastActivity: g(I.lastActivity),
+      modifiedBy: g(I.modifiedBy), tcv: parseFloat(g(I.tcv))||0, firstMeeting: g(I.firstMeeting),
+      insideSalesTag: g(I.insideSalesTag),
+    };
+  }).filter(r => r.oppName);
+}
+
+function parseCSVLine(line) {
+  const result = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+    else if (ch === ',' && !inQ) { result.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── State ──────────────────────────────────────────────────────────
+let DATA = [];          // only flagged rows
+let ALL_DATA = [];      // all rows (for dropdown population)
+let sortCol = -1, sortDir = 1;
+let filtered = [];
+let isOnlyIS = false;
+let refreshTimer, countdownTimer, secondsLeft = REFRESH_S;
+
+function isInsideSales(r) {
+  return !!r.insideSalesTag;
+}
+function toggleIS() {
+  isOnlyIS = !isOnlyIS;
+  const btn = document.getElementById('isBtn');
+  btn.className = 'tag-btn' + (isOnlyIS ? ' active' : '');
+  applyFilters();
+}
+
+// ── Load data ──────────────────────────────────────────────────────
+function processRows(rows) {
+  rows.forEach(r => r.flagged = isFlagged(r));
+  ALL_DATA = rows;
+  DATA = rows.filter(r => r.flagged);
+}
+
+async function fetchSheet() {
+  try {
+    const resp = await fetch(CSV_URL, { cache: 'no-store' });
+    if (!resp.ok) throw new Error(resp.status);
+    const text = await resp.text();
+    const rows = parseCSV(text);
+    if (rows && rows.length > 0) {
+      processRows(rows);
+      return true;
+    }
+  } catch(e) { /* fall through */ }
+  return false;
+}
+
+async function doRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  setStatus('Refreshing…', false);
+
+  const ok = await fetchSheet();
+  if (!ok && DATA.length === 0) {
+    // first load fallback
+    processRows(FALLBACK);
+  }
+
+  btn.classList.remove('spinning');
+  const now = new Date().toLocaleTimeString();
+  setStatus(`Last refreshed: ${now}${ok ? '' : ' (offline – showing cached data)'}`, ok);
+  populateDropdowns();
+  renderStats();
+  applyFilters();
+  resetCountdown();
+}
+
+function setStatus(msg, live) {
+  document.getElementById('refreshStatus').textContent = msg;
+  const dot = document.getElementById('dot');
+  dot.className = 'dot' + (live ? '' : ' stale');
+}
+
+function resetCountdown() {
+  clearInterval(countdownTimer);
+  secondsLeft = REFRESH_S;
+  countdownTimer = setInterval(() => {
+    secondsLeft--;
+    const el = document.getElementById('refreshStatus');
+    if (secondsLeft > 0) {
+      const base = el.textContent.replace(/ – next in \d+s/, '');
+      el.textContent = base + ` – next in ${secondsLeft}s`;
+    } else {
+      clearInterval(countdownTimer);
+      doRefresh();
+    }
+  }, 1000);
+}
+
+// ── Dropdowns ─────────────────────────────────────────────────────
+function populateDropdowns() {
+  ['fOwner','fStage','fPeriod','fRole','fIS'].forEach(id => {
+    const sel = document.getElementById(id);
+    const prev = sel.value;
+    while (sel.options.length > 1) sel.remove(1);
+    const field = {fOwner:'oppOwner',fStage:'stage',fPeriod:'fiscalPeriod',fRole:'ownerRole',fIS:'insideSalesTag'}[id];
+    [...new Set(DATA.map(r => r[field]).filter(Boolean))].sort()
+      .forEach(v => { const o = document.createElement('option'); o.value = o.textContent = v; sel.appendChild(o); });
+    if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+  });
+}
+
+// ── Stats ──────────────────────────────────────────────────────────
+function renderStats() {
+  const total = ALL_DATA.length;
+  const f = DATA.length;
+  const mo = TODAY.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card red"><div class="val">${f}</div><div class="lbl">⚠ 1st Meeting in Past Month</div></div>
+    <div class="stat-card green"><div class="val">${total - f}</div><div class="lbl">✓ 1st Meeting in ${mo} or Future</div></div>
+    <div class="stat-card blue"><div class="val">${total}</div><div class="lbl">Total Opportunities</div></div>
+  `;
+}
+
+// ── Filters ────────────────────────────────────────────────────────
+function applyFilters() {
+  const q      = document.getElementById('search').value.toLowerCase();
+  const owner  = document.getElementById('fOwner').value;
+  const stage  = document.getElementById('fStage').value;
+  const period = document.getElementById('fPeriod').value;
+  const role   = document.getElementById('fRole').value;
+  const isTag  = document.getElementById('fIS').value;
+
+  filtered = DATA.filter(r => {
+    if (isOnlyIS && !isInsideSales(r))           return false;
+    if (owner  && r.oppOwner      !== owner)     return false;
+    if (stage  && r.stage         !== stage)     return false;
+    if (period && r.fiscalPeriod  !== period)    return false;
+    if (role   && r.ownerRole     !== role)      return false;
+    if (isTag  && r.insideSalesTag !== isTag)    return false;
+    if (q && !Object.values(r).join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if (sortCol >= 0) filtered = doSort(filtered, sortCol, sortDir);
+  renderTable();
+}
+
+// ── Sort ───────────────────────────────────────────────────────────
+const COLS = ["isIS","oppOwner","accountName","oppName","stage","fiscalPeriod","amount","prob","age","closeDate","firstMeeting","nextStep","leadSource","oppType","industry","category","contactTitle","contactEmail","contact","phone","lastActivity","modifiedBy","tcv"];
+
+function doSort(arr, col, dir) {
+  return [...arr].sort((a,b) => {
+    let va = a[COLS[col]] ?? '', vb = b[COLS[col]] ?? '';
+    if (typeof va === 'number') return (va - vb) * dir;
+    return String(va).localeCompare(String(vb)) * dir;
+  });
+}
+
+function sortTable(col) {
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
+  document.querySelectorAll('thead th').forEach((th,i) => {
+    th.className = i===col ? (sortDir===1?'sort-asc':'sort-desc') : '';
+  });
+  filtered = doSort(filtered, sortCol, sortDir);
+  renderTable();
+}
+
+// ── Render ─────────────────────────────────────────────────────────
+function fmt(v) {
+  if (v===null||v===undefined||v==='') return '<span style="color:#cbd5e1">—</span>';
+  return v;
+}
+
+function renderTable() {
+  document.getElementById('rowCount').textContent =
+    `Showing ${filtered.length} opportunit${filtered.length!==1?'ies':'y'} with 1st meeting NOT in current month`;
+
+  if (!filtered.length) {
+    document.getElementById('tbody').innerHTML =
+      `<tr><td colspan="23" style="text-align:center;padding:40px;color:#94a3b8">No results</td></tr>`;
+    return;
+  }
+
+  document.getElementById('tbody').innerHTML = filtered.map(r => {
+    const stageBadge = r.stage === 'Qualified Leads (SQL)'
+      ? `<span class="badge badge-sql">SQL</span>`
+      : `<span class="badge badge-cold">${r.stage||'—'}</span>`;
+    const fm = parseMonthYear(r.firstMeeting);
+    const mtgLabel = fm
+      ? new Date(r.firstMeeting).toLocaleDateString('en-US',{month:'short',year:'numeric'})
+      : 'No date';
+    const isBadge = r.insideSalesTag
+      ? `<span class="badge badge-is" style="cursor:pointer;font-size:11px" onclick="if(!isOnlyIS)toggleIS()" title="Filter: Inside Sales">🏷 ${r.insideSalesTag}</span>`
+      : `<span style="color:#cbd5e1">—</span>`;
+    return `<tr class="flagged">
+      <td style="text-align:center">${isBadge}</td>
+      <td>${fmt(r.oppOwner)}</td>
+      <td title="${r.accountName}">${fmt(r.accountName)}</td>
+      <td title="${r.oppName}" style="max-width:220px">${fmt(r.oppName)}</td>
+      <td>${stageBadge}</td>
+      <td>${fmt(r.fiscalPeriod)}</td>
+      <td>${r.amount&&r.amount!=='0'?Number(r.amount).toLocaleString():fmt('')}</td>
+      <td>${fmt(r.prob)}</td>
+      <td>${fmt(r.age)}</td>
+      <td>${fmt(r.closeDate)}</td>
+      <td style="font-weight:700;color:#b91c1c" title="Not in current month: ${mtgLabel}">${fmt(r.firstMeeting)}</td>
+      <td>${fmt(r.nextStep)}</td>
+      <td>${fmt(r.leadSource)}</td>
+      <td>${fmt(r.oppType)}</td>
+      <td>${fmt(r.industry)}</td>
+      <td>${fmt(r.category)}</td>
+      <td>${fmt(r.contactTitle)}</td>
+      <td>${fmt(r.contactEmail)}</td>
+      <td>${fmt(r.contact)}</td>
+      <td>${fmt(r.phone)}</td>
+      <td>${fmt(r.lastActivity)}</td>
+      <td>${fmt(r.modifiedBy)}</td>
+      <td>${r.tcv?Number(r.tcv).toLocaleString():fmt('')}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Boot: wait for password ────────────────────────────────────────
+document.getElementById('pwInput').focus();
+</script>
+</body>
+</html>
